@@ -10,6 +10,13 @@ import type { CurrentSession, Player, SessionRow } from "@/lib/types";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
+function avatarTextColor(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return 0.299 * r + 0.587 * g + 0.114 * b > 160 ? "#33260c" : "#ffffff";
+}
+
 function useToast() {
   const [msg, setMsg] = useState<string | null>(null);
   const show = (m: string) => {
@@ -191,7 +198,6 @@ function NewSessionView({ players, onStart }: { players: Player[]; onStart: (ids
 function ActiveSessionView({ session, allPlayers, onMutate, onCountingStart }: {
   session: CurrentSession; allPlayers: Player[]; onMutate: () => void; onCountingStart: () => void;
 }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [buyInSheet, setBuyInSheet] = useState<Player | null>(null);
   const [earlyExitSheet, setEarlyExitSheet] = useState<{ player: Player; totalIn: number } | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -208,10 +214,6 @@ function ActiveSessionView({ session, allPlayers, onMutate, onCountingStart }: {
     if (!res.ok) { const d = await res.json(); show(d.error ?? "Error"); }
     onMutate();
   };
-  const removePlayer = async (playerId: string) => {
-    await fetch(`/api/sessions/${session.id}/players/${playerId}`, { method: "DELETE" });
-    onMutate();
-  };
   const addPlayer = async (playerId: string) => {
     await fetch(`/api/sessions/${session.id}/players`, {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -225,7 +227,6 @@ function ActiveSessionView({ session, allPlayers, onMutate, onCountingStart }: {
       body: JSON.stringify({ finalChips }),
     });
     setEarlyExitSheet(null);
-    setExpandedId(null);
     onMutate();
   };
   const cancelSession = async () => {
@@ -233,6 +234,15 @@ function ActiveSessionView({ session, allPlayers, onMutate, onCountingStart }: {
     onMutate();
     setConfirmCancel(false);
   };
+
+  const iconBtn = (gold: boolean): React.CSSProperties => ({
+    width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+    display: "flex", alignItems: "center", justifyContent: "center",
+    cursor: "pointer", border: "none", fontFamily: "inherit",
+    background: gold ? "rgba(214,189,128,.18)" : "rgba(239,111,111,.12)",
+    color: gold ? "#d6bd80" : "#ef9f9f",
+    fontSize: gold ? 20 : 15, fontWeight: 800,
+  });
 
   return (
     <>
@@ -250,57 +260,68 @@ function ActiveSessionView({ session, allPlayers, onMutate, onCountingStart }: {
       </Card>
 
       {session.rows.map((row) => {
-        const isExpanded = expandedId === row.playerId;
         const leftEarly = row.finalChips !== null;
         const rebuys = row.buyIns.length - 1;
-        const net = leftEarly ? row.finalChips! - row.totalIn : null;
+        const color = row.player?.color ?? "#888888";
+        const initial = (row.player?.name ?? "?")[0].toUpperCase();
 
         return (
-          <Card key={row.playerId} style={{ marginTop: 10, opacity: leftEarly ? 0.75 : 1 }}>
-            {/* Tappable header */}
-            <div
-              onClick={() => setExpandedId(isExpanded ? null : row.playerId)}
-              style={{ display: "flex", alignItems: "center", gap: 11, cursor: "pointer", paddingBottom: isExpanded ? 12 : 0, borderBottom: isExpanded ? "1px solid var(--line)" : "none" }}
-            >
-              <ChipDot color={row.player?.color ?? "#888"} />
-              <div>
-                <span style={{ fontWeight: 700, fontSize: 16 }}>{row.player?.name ?? "—"}</span>
-                {leftEarly && (
-                  <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>Se fue · {rebuys > 0 ? `${rebuys} recompra${rebuys > 1 ? "s" : ""} · ` : ""}resultado: <span style={{ color: net! > 0 ? "var(--win)" : net! < 0 ? "var(--loss)" : "var(--cream)", fontFamily: "var(--font-mono), monospace", fontWeight: 700 }}>{signed(net!)}</span></div>
-                )}
+          <Card key={row.playerId} style={{ marginTop: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              {/* Avatar */}
+              <div style={{
+                width: 42, height: 42, borderRadius: 12, flexShrink: 0,
+                background: color, opacity: leftEarly ? 0.45 : 1,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 17, fontWeight: 800, color: avatarTextColor(color),
+              }}>
+                {initial}
+              </div>
+
+              {/* Name + subtitle */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 16, lineHeight: 1.2 }}>{row.player?.name ?? "—"}</div>
                 {!leftEarly && rebuys > 0 && (
-                  <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>{rebuys} recompra{rebuys > 1 ? "s" : ""}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{rebuys} recompra{rebuys > 1 ? "s" : ""}</div>
+                )}
+                {leftEarly && (
+                  <button
+                    onClick={() => setEarlyExitSheet({ player: row.player!, totalIn: row.totalIn })}
+                    style={{ background: "none", border: "none", padding: 0, fontSize: 11, color: "var(--muted)", cursor: "pointer", fontFamily: "inherit", marginTop: 2 }}
+                  >
+                    editar salida
+                  </button>
                 )}
               </div>
-              <div style={{ marginLeft: "auto", textAlign: "right" }}>
-                <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 700, fontSize: 18 }}>{money(row.totalIn)}</div>
-                <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>{isExpanded ? "▲" : "▼"}</div>
-              </div>
+
+              {/* Amount or "FUE" badge */}
+              {leftEarly ? (
+                <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600, textAlign: "right", flexShrink: 0 }}>
+                  FUE · {money(row.finalChips!)}
+                </div>
+              ) : (
+                <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 700, fontSize: 16, color: "var(--gold)", flexShrink: 0 }}>
+                  {money(row.totalIn)}
+                </div>
+              )}
+
+              {/* Action buttons */}
+              {!leftEarly && (
+                <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                  <button style={iconBtn(true)} onClick={() => setBuyInSheet(row.player)}>+</button>
+                  <button style={iconBtn(false)} onClick={() => setEarlyExitSheet({ player: row.player!, totalIn: row.totalIn })}>✕</button>
+                </div>
+              )}
             </div>
 
-            {/* Expanded actions */}
-            {isExpanded && (
-              <div style={{ paddingTop: 12 }}>
-                {leftEarly ? (
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <BtnGhost onClick={() => setEarlyExitSheet({ player: row.player!, totalIn: row.totalIn })}>Editar salida</BtnGhost>
-                    <BtnGhost onClick={() => removePlayer(row.playerId)} style={{ marginLeft: "auto", color: "var(--muted)" }}>Quitar de sesión</BtnGhost>
-                  </div>
-                ) : (
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <BtnGold onClick={() => { setBuyInSheet(row.player); setExpandedId(null); }} style={{ flex: 1, justifyContent: "center" }}>
-                      Agregar monto
-                    </BtnGold>
-                    <BtnSoft onClick={() => { setEarlyExitSheet({ player: row.player!, totalIn: row.totalIn }); }} style={{ flex: 1, justifyContent: "center" }}>
-                      Se va antes
-                    </BtnSoft>
-                    {row.buyIns.length > 1 && (
-                      <BtnGhost onClick={() => undoBuyIn(row.playerId)} style={{ width: "100%", justifyContent: "center" }}>↶ deshacer última recompra</BtnGhost>
-                    )}
-                    <BtnGhost onClick={() => removePlayer(row.playerId)} style={{ width: "100%", justifyContent: "center", color: "var(--muted)" }}>Quitar de sesión</BtnGhost>
-                  </div>
-                )}
-              </div>
+            {/* Undo link */}
+            {!leftEarly && row.buyIns.length > 1 && (
+              <button
+                onClick={() => undoBuyIn(row.playerId)}
+                style={{ background: "none", border: "none", padding: "8px 0 0", fontSize: 11, color: "var(--muted)", cursor: "pointer", fontFamily: "inherit", display: "block" }}
+              >
+                ↶ deshacer última recompra
+              </button>
             )}
           </Card>
         );

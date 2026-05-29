@@ -99,12 +99,11 @@ export function Card({
     <div
       onClick={onClick}
       style={{
-        background: "var(--panel)",
-        border: "1px solid var(--line)",
+        background: "var(--panel-solid)",
+        border: "1px solid rgba(255,255,255,0.06)",
         borderRadius: 18,
         padding: 16,
-        boxShadow: "var(--shadow)",
-        backdropFilter: "blur(6px)",
+        boxShadow: "0 6px 24px rgba(0,0,0,0.45)",
         ...style,
       }}
       className={className}
@@ -193,6 +192,7 @@ export function BtnGhost({
         gap: 7,
         borderRadius: 11,
         padding: "9px 12px",
+        minHeight: 44,
         fontWeight: 700,
         fontSize: 13,
         background: "rgba(255,255,255,.05)",
@@ -227,6 +227,7 @@ export function BtnSoft({
         gap: 7,
         borderRadius: 11,
         padding: "9px 12px",
+        minHeight: 44,
         fontWeight: 700,
         fontSize: 13,
         background: "rgba(214,189,128,.14)",
