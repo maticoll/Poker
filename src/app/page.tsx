@@ -46,7 +46,7 @@ function BuyInSheet({
   };
 
   return (
-    <Sheet title="Recompra" onClose={onClose}>
+    <Sheet title={`Agregar monto — ${player.name}`} onClose={onClose}>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
         {presets.map((v) => (
           <button key={v} onClick={() => { setSelected(v); setCustom(""); }}
@@ -65,7 +65,43 @@ function BuyInSheet({
         <TextInput type="number" inputMode="numeric" value={custom}
           onChange={(v) => { setCustom(v); if (v) setSelected(0); }} placeholder="Monto personalizado" />
       </div>
-      <BtnGold onClick={handleAdd} disabled={loading}>Agregar recompra</BtnGold>
+      <BtnGold onClick={handleAdd} disabled={loading}>Agregar monto</BtnGold>
+    </Sheet>
+  );
+}
+
+// ---- Early Exit Sheet ----
+function EarlyExitSheet({ player, totalIn, onClose, onDone }: {
+  player: Player; totalIn: number; onClose: () => void; onDone: (chips: number) => void;
+}) {
+  const [chips, setChips] = useState("");
+  const chipNum = chips === "" ? null : parseInt(chips);
+  const net = chipNum !== null ? chipNum - totalIn : null;
+
+  return (
+    <Sheet title={`${player.name} se va`} onClose={onClose}>
+      <p style={{ fontSize: 13, color: "var(--cream-dim)", margin: "0 0 16px" }}>
+        Invirtió <strong style={{ color: "var(--cream)", fontFamily: "var(--font-mono), monospace" }}>{money(totalIn)}</strong>. Cargá con cuánto se va.
+      </p>
+      <div style={{ marginBottom: 14 }}>
+        <FieldLabel>Fichas finales</FieldLabel>
+        <TextInput type="number" inputMode="numeric" value={chips} onChange={setChips} placeholder="$" />
+      </div>
+      {net !== null && (
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 16, padding: "10px 13px", borderRadius: 11, background: "rgba(255,255,255,.04)", border: "1px solid var(--line)" }}>
+          <span style={{ color: "var(--muted)" }}>Resultado</span>
+          <span style={{
+            fontFamily: "var(--font-mono), monospace", fontWeight: 700,
+            color: net > 0 ? "var(--win)" : net < 0 ? "var(--loss)" : "var(--cream)",
+          }}>{signed(net)}</span>
+        </div>
+      )}
+      <BtnGold
+        onClick={() => { if (chipNum !== null && chipNum >= 0) onDone(chipNum); }}
+        disabled={chipNum === null || chipNum < 0}
+      >
+        Registrar salida
+      </BtnGold>
     </Sheet>
   );
 }
@@ -155,21 +191,15 @@ function NewSessionView({ players, onStart }: { players: Player[]; onStart: (ids
 function ActiveSessionView({ session, allPlayers, onMutate, onCountingStart }: {
   session: CurrentSession; allPlayers: Player[]; onMutate: () => void; onCountingStart: () => void;
 }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [buyInSheet, setBuyInSheet] = useState<Player | null>(null);
+  const [earlyExitSheet, setEarlyExitSheet] = useState<{ player: Player; totalIn: number } | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const { msg, show } = useToast();
 
   const inGameIds = new Set(session.rows.map((r) => r.playerId));
   const outsiders = allPlayers.filter((p) => !inGameIds.has(p.id));
 
-  const addBuyIn = async (playerId: string, amount: number) => {
-    const addedBy = localStorage.getItem("currentPlayerId") ?? undefined;
-    await fetch("/api/buyins", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId: session.id, playerId, amount, addedBy }),
-    });
-    onMutate();
-  };
   const undoBuyIn = async (playerId: string) => {
     const res = await fetch("/api/buyins/last", {
       method: "DELETE", headers: { "Content-Type": "application/json" },
@@ -187,6 +217,15 @@ function ActiveSessionView({ session, allPlayers, onMutate, onCountingStart }: {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ playerId }),
     });
+    onMutate();
+  };
+  const recordEarlyExit = async (playerId: string, finalChips: number) => {
+    await fetch(`/api/sessions/${session.id}/players/${playerId}/chips`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ finalChips }),
+    });
+    setEarlyExitSheet(null);
+    setExpandedId(null);
     onMutate();
   };
   const cancelSession = async () => {
@@ -211,23 +250,58 @@ function ActiveSessionView({ session, allPlayers, onMutate, onCountingStart }: {
       </Card>
 
       {session.rows.map((row) => {
+        const isExpanded = expandedId === row.playerId;
+        const leftEarly = row.finalChips !== null;
         const rebuys = row.buyIns.length - 1;
+        const net = leftEarly ? row.finalChips! - row.totalIn : null;
+
         return (
-          <Card key={row.playerId} style={{ marginTop: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 12 }}>
+          <Card key={row.playerId} style={{ marginTop: 10, opacity: leftEarly ? 0.75 : 1 }}>
+            {/* Tappable header */}
+            <div
+              onClick={() => setExpandedId(isExpanded ? null : row.playerId)}
+              style={{ display: "flex", alignItems: "center", gap: 11, cursor: "pointer", paddingBottom: isExpanded ? 12 : 0, borderBottom: isExpanded ? "1px solid var(--line)" : "none" }}
+            >
               <ChipDot color={row.player?.color ?? "#888"} />
-              <span style={{ fontWeight: 700, fontSize: 16 }}>{row.player?.name ?? "—"}</span>
+              <div>
+                <span style={{ fontWeight: 700, fontSize: 16 }}>{row.player?.name ?? "—"}</span>
+                {leftEarly && (
+                  <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>Se fue · {rebuys > 0 ? `${rebuys} recompra${rebuys > 1 ? "s" : ""} · ` : ""}resultado: <span style={{ color: net! > 0 ? "var(--win)" : net! < 0 ? "var(--loss)" : "var(--cream)", fontFamily: "var(--font-mono), monospace", fontWeight: 700 }}>{signed(net!)}</span></div>
+                )}
+                {!leftEarly && rebuys > 0 && (
+                  <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>{rebuys} recompra{rebuys > 1 ? "s" : ""}</div>
+                )}
+              </div>
               <div style={{ marginLeft: "auto", textAlign: "right" }}>
                 <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 700, fontSize: 18 }}>{money(row.totalIn)}</div>
-                <div style={{ fontSize: 11, color: "var(--muted)" }}>{rebuys > 0 ? `${rebuys} recompra${rebuys > 1 ? "s" : ""}` : "sin recompras"}</div>
+                <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>{isExpanded ? "▲" : "▼"}</div>
               </div>
             </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <BtnSoft onClick={() => addBuyIn(row.playerId, session.defaultBuyIn)}>+ ${fmt(session.defaultBuyIn)}</BtnSoft>
-              <BtnGhost onClick={() => setBuyInSheet(row.player)}>Otro monto</BtnGhost>
-              {row.buyIns.length > 1 && <BtnGhost onClick={() => undoBuyIn(row.playerId)}>↶ deshacer</BtnGhost>}
-              <BtnGhost onClick={() => removePlayer(row.playerId)} style={{ marginLeft: "auto", color: "var(--muted)" }}>✕</BtnGhost>
-            </div>
+
+            {/* Expanded actions */}
+            {isExpanded && (
+              <div style={{ paddingTop: 12 }}>
+                {leftEarly ? (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <BtnGhost onClick={() => setEarlyExitSheet({ player: row.player!, totalIn: row.totalIn })}>Editar salida</BtnGhost>
+                    <BtnGhost onClick={() => removePlayer(row.playerId)} style={{ marginLeft: "auto", color: "var(--muted)" }}>Quitar de sesión</BtnGhost>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <BtnGold onClick={() => { setBuyInSheet(row.player); setExpandedId(null); }} style={{ flex: 1, justifyContent: "center" }}>
+                      Agregar monto
+                    </BtnGold>
+                    <BtnSoft onClick={() => { setEarlyExitSheet({ player: row.player!, totalIn: row.totalIn }); }} style={{ flex: 1, justifyContent: "center" }}>
+                      Se va antes
+                    </BtnSoft>
+                    {row.buyIns.length > 1 && (
+                      <BtnGhost onClick={() => undoBuyIn(row.playerId)} style={{ width: "100%", justifyContent: "center" }}>↶ deshacer última recompra</BtnGhost>
+                    )}
+                    <BtnGhost onClick={() => removePlayer(row.playerId)} style={{ width: "100%", justifyContent: "center", color: "var(--muted)" }}>Quitar de sesión</BtnGhost>
+                  </div>
+                )}
+              </div>
+            )}
           </Card>
         );
       })}
@@ -249,6 +323,14 @@ function ActiveSessionView({ session, allPlayers, onMutate, onCountingStart }: {
 
       {buyInSheet && <BuyInSheet player={buyInSheet} sessionId={session.id} defaultBuyIn={session.defaultBuyIn}
         onClose={() => setBuyInSheet(null)} onDone={onMutate} />}
+      {earlyExitSheet && (
+        <EarlyExitSheet
+          player={earlyExitSheet.player}
+          totalIn={earlyExitSheet.totalIn}
+          onClose={() => setEarlyExitSheet(null)}
+          onDone={(chips) => recordEarlyExit(earlyExitSheet.player.id, chips)}
+        />
+      )}
       {confirmCancel && (
         <Sheet title="¿Cancelar partida?" onClose={() => setConfirmCancel(false)}>
           <p style={{ fontSize: 13, color: "var(--cream-dim)", margin: "0 0 16px" }}>Se borra la partida en curso y no queda registrada.</p>
@@ -313,19 +395,30 @@ function CountingView({ session, onBack, onClosed }: {
         <p style={{ fontSize: 12, color: "var(--cream-dim)", margin: 0 }}>Cargá con cuánto quedó cada uno.</p>
       </Card>
       {session.rows.map((row) => {
+        const leftEarly = row.finalChips !== null && chips[row.playerId] === undefined;
         const chipVal = chips[row.playerId] ?? (row.finalChips !== null ? String(row.finalChips) : "");
         const chipNum = chipVal === "" ? null : parseInt(chipVal);
         const netVal = chipNum !== null ? chipNum - row.totalIn : null;
         return (
-          <Card key={row.playerId} style={{ marginTop: 10 }}>
+          <Card key={row.playerId} style={{ marginTop: 10, opacity: leftEarly ? 0.7 : 1 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
                 <ChipDot color={row.player?.color ?? "#888"} />
-                <span style={{ fontWeight: 700, fontSize: 15 }}>{row.player?.name ?? "—"}</span>
+                <div>
+                  <span style={{ fontWeight: 700, fontSize: 15 }}>{row.player?.name ?? "—"}</span>
+                  {leftEarly && <div style={{ fontSize: 10, color: "var(--muted)", letterSpacing: 1, textTransform: "uppercase", marginTop: 1 }}>Se fue antes</div>}
+                </div>
               </div>
               <span style={{ fontSize: 11, color: "var(--muted)" }}>invirtió {money(row.totalIn)}</span>
             </div>
-            <TextInput type="number" inputMode="numeric" value={chipVal} onChange={(v) => updateChips(row.playerId, v)} placeholder="Fichas finales $" />
+            {leftEarly ? (
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "10px 13px", borderRadius: 11, background: "rgba(255,255,255,.04)", border: "1px solid var(--line)" }}>
+                <span style={{ color: "var(--muted)" }}>Fichas registradas</span>
+                <span style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 700 }}>{money(row.finalChips!)}</span>
+              </div>
+            ) : (
+              <TextInput type="number" inputMode="numeric" value={chipVal} onChange={(v) => updateChips(row.playerId, v)} placeholder="Fichas finales $" />
+            )}
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginTop: 8 }}>
               <span style={{ color: "var(--muted)" }}>Resultado</span>
               <span style={{
