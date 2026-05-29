@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+:root {
+  --felt: #0c2c20;
+  --felt-2: #103a2b;
+  --panel: rgba(20, 58, 43, 0.66);
+  --panel-solid: #143a2b;
+  --line: rgba(214, 189, 128, 0.18);
+  --line-strong: rgba(214, 189, 128, 0.4);
+  --cream: #f3ead6;
+  --cream-dim: #bdc7b8;
+  --muted: #8aa394;
+  --gold: #d6bd80;
+  --gold-bright: #f0d99a;
+  --win: #5fd39a;
+  --loss: #ef6f6f;
+  --shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.7);
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-jakarta), 'Plus Jakarta Sans', sans-serif;
+  color: var(--cream);
+  background:
+    radial-gradient(120% 80% at 50% -10%, #18543c 0%, var(--felt) 45%, #07201700 100%),
+    radial-gradient(140% 90% at 50% 120%, #0a3325 0%, var(--felt) 60%),
+    var(--felt);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.045'/%3E%3C/svg%3E");
+}
+
+#app {
+  position: relative;
+  z-index: 1;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 0 16px 110px;
+  min-height: 100vh;
+}
+
+/* Typography helpers */
+.font-display {
+  font-family: var(--font-fraunces), 'Fraunces', serif;
+}
+.font-mono-poker {
+  font-family: var(--font-mono), 'JetBrains Mono', monospace;
+}
+
+/* Noise texture overlay for cards */
+.card-noise::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 2px; }
+
+/* Input number spinners off */
+input[type="number"] { -moz-appearance: textfield; }
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button { -webkit-appearance: none; }

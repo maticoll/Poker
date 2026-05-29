@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>El Pozo — Poker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500;1,9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --felt:#0c2c20;
+    --felt-2:#103a2b;
+    --panel:rgba(20,58,43,.66);
+    --panel-solid:#143a2b;
+    --line:rgba(214,189,128,.18);
+    --line-strong:rgba(214,189,128,.4);
+    --cream:#f3ead6;
+    --cream-dim:#bdc7b8;
+    --muted:#8aa394;
+    --gold:#d6bd80;
+    --gold-bright:#f0d99a;
+    --win:#5fd39a;
+    --loss:#ef6f6f;
+    --shadow:0 18px 40px -18px rgba(0,0,0,.7);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:'Plus Jakarta Sans',sans-serif;
+    color:var(--cream);
+    background:
+      radial-gradient(120% 80% at 50% -10%, #18543c 0%, var(--felt) 45%, #07201700 100%),
+      radial-gradient(140% 90% at 50% 120%, #0a3325 0%, var(--felt) 60%),
+      var(--felt);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.045'/%3E%3C/svg%3E");
+  }
+  #app{position:relative;z-index:1;max-width:520px;margin:0 auto;padding:0 16px 110px;min-height:100vh}
+
+  /* Header */
+  header{padding:26px 2px 14px;display:flex;align-items:center;justify-content:space-between}
+  .brand h1{font-family:'Fraunces',serif;font-weight:600;font-size:30px;letter-spacing:.5px;margin:0;line-height:1}
+  .brand .sub{color:var(--gold);font-size:11px;letter-spacing:3px;text-transform:uppercase;margin-top:5px;font-weight:600}
+  .pip{display:inline-block;width:9px;height:9px;border-radius:2px;transform:rotate(45deg);background:var(--gold);margin-left:2px}
+
+  /* Generic */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow);backdrop-filter:blur(6px)}
+  .card+.card{margin-top:12px}
+  .mono{font-family:'JetBrains Mono',monospace}
+  .row{display:flex;align-items:center;gap:10px}
+  .between{justify-content:space-between}
+  .muted{color:var(--muted)}
+  .dim{color:var(--cream-dim)}
+  .win{color:var(--win)}.loss{color:var(--loss)}
+  .small{font-size:12px}.tiny{font-size:11px}
+  .section-title{font-family:'Fraunces',serif;font-size:21px;font-weight:600;margin:22px 2px 12px;display:flex;align-items:center;gap:9px}
+  .chip-dot{width:14px;height:14px;border-radius:50%;flex:none;box-shadow:0 0 0 2px rgba(0,0,0,.25), inset 0 0 0 2px rgba(255,255,255,.25)}
+  .chip-dot.sm{width:11px;height:11px}
+
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border-radius:13px;padding:13px 16px;font-weight:700;font-size:15px;transition:transform .08s ease, filter .15s}
+  .btn:active{transform:scale(.97)}
+  .btn-gold{background:linear-gradient(180deg,var(--gold-bright),var(--gold));color:#33260c;box-shadow:0 8px 20px -8px rgba(214,189,128,.6)}
+  .btn-ghost{background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--cream)}
+  .btn-soft{background:rgba(214,189,128,.14);color:var(--gold-bright);border:1px solid var(--line)}
+  .btn-block{width:100%}
+  .btn-sm{padding:9px 12px;font-size:13px;border-radius:11px}
+
+  input[type=text],input[type=number]{
+    width:100%;font-family:inherit;font-size:16px;color:var(--cream);
+    background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:12px;padding:13px 14px;outline:none;
+  }
+  input:focus{border-color:var(--line-strong)}
+  label{font-size:12px;color:var(--gold);font-weight:600;text-transform:uppercase;letter-spacing:.6px;display:block;margin:0 0 6px 2px}
+  input[type=number]{-moz-appearance:textfield}
+  input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none}
+
+  .empty{text-align:center;color:var(--muted);padding:40px 14px;font-size:14px}
+  .empty .big{font-size:34px;margin-bottom:10px;opacity:.8}
+
+  /* Player session card */
+  .pcard{display:flex;flex-direction:column;gap:12px}
+  .pcard .top{display:flex;align-items:center;gap:11px}
+  .pname{font-weight:700;font-size:16px}
+  .pinfo{margin-left:auto;text-align:right}
+  .pinfo .big{font-family:'JetBrains Mono';font-weight:700;font-size:18px}
+  .buyin-controls{display:flex;gap:8px;flex-wrap:wrap}
+  .stepper{display:flex;align-items:center;gap:8px;margin-left:auto}
+  .stepbtn{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.06);border:1px solid var(--line);font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1}
+  .stepbtn.plus{background:rgba(214,189,128,.16);color:var(--gold-bright)}
+
+  /* Settlement / transfers */
+  .transfer{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+  .transfer:last-child{border-bottom:none}
+  .arrow{color:var(--gold);font-size:18px;flex:none}
+  .tnames{flex:1;min-width:0}
+  .tnames .pay{font-weight:700}
+  .tamt{font-family:'JetBrains Mono';font-weight:700;font-size:16px;color:var(--gold-bright);white-space:nowrap}
+  .acct{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:12px;color:var(--cream-dim)}
+  .copybtn{background:rgba(214,189,128,.14);border:1px solid var(--line);border-radius:8px;padding:4px 9px;font-size:11px;font-weight:700;color:var(--gold-bright);display:inline-flex;gap:5px;align-items:center}
+  .copybtn.ok{background:rgba(95,211,154,.18);color:var(--win);border-color:rgba(95,211,154,.3)}
+
+  /* Ranking */
+  .rank-row{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}
+  .rank-row:last-child{border-bottom:none}
+  .rank-pos{font-family:'Fraunces';font-style:italic;font-size:20px;width:26px;text-align:center;color:var(--gold);flex:none}
+  .rank-net{margin-left:auto;text-align:right}
+  .rank-net .v{font-family:'JetBrains Mono';font-weight:700;font-size:17px}
+  .bar{height:5px;border-radius:3px;margin-top:5px;background:rgba(255,255,255,.07);overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:3px}
+
+  /* checkbox player pick */
+  .pick{display:flex;align-items:center;gap:11px;padding:12px 13px;border:1px solid var(--line);border-radius:13px;margin-bottom:8px;transition:.15s}
+  .pick.on{border-color:var(--line-strong);background:rgba(214,189,128,.1)}
+  .pick .box{width:22px;height:22px;border-radius:7px;border:2px solid var(--line-strong);margin-left:auto;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}
+  .pick.on .box{background:var(--gold);color:#33260c;border-color:var(--gold)}
+
+  /* Bottom nav */
+  nav{position:fixed;bottom:0;left:0;right:0;z-index:20;background:linear-gradient(0deg,var(--felt) 60%,rgba(12,44,32,.85));backdrop-filter:blur(10px);border-top:1px solid var(--line)}
+  .nav-inner{max-width:520px;margin:0 auto;display:flex;padding:9px 8px calc(9px + env(safe-area-inset-bottom,0px))}
+  .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 2px;color:var(--muted);font-size:10.5px;font-weight:600;letter-spacing:.3px}
+  .nav-btn svg{width:23px;height:23px}
+  .nav-btn.active{color:var(--gold-bright)}
+
+  /* Modal */
+  .scrim{position:fixed;inset:0;z-index:40;background:rgba(4,18,12,.72);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;animation:fade .2s}
+  @keyframes fade{from{opacity:0}}
+  .sheet{width:100%;max-width:520px;background:var(--panel-solid);border:1px solid var(--line-strong);border-bottom:none;border-radius:22px 22px 0 0;padding:20px 18px calc(22px + env(safe-area-inset-bottom,0px));box-shadow:0 -20px 50px -10px rgba(0,0,0,.6);animation:slideup .25s cubic-bezier(.2,.8,.2,1)}
+  @keyframes slideup{from{transform:translateY(100%)}}
+  .sheet h3{font-family:'Fraunces';font-weight:600;font-size:22px;margin:2px 0 16px}
+  .field{margin-bottom:14px}
+  .quick-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .qchip{padding:9px 14px;border-radius:11px;background:rgba(255,255,255,.06);border:1px solid var(--line);font-family:'JetBrains Mono';font-weight:700;font-size:13px}
+  .qchip.on{background:var(--gold);color:#33260c;border-color:var(--gold)}
+
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;padding:5px 10px;border-radius:999px}
+  .pill.warn{background:rgba(239,111,111,.15);color:var(--loss);border:1px solid rgba(239,111,111,.3)}
+  .pill.ok{background:rgba(95,211,154,.15);color:var(--win);border:1px solid rgba(95,211,154,.3)}
+
+  .link{color:var(--gold);font-weight:600;font-size:13px}
+  .divider{height:1px;background:var(--line);margin:14px 0}
+  .toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);z-index:60;background:var(--panel-solid);border:1px solid var(--line-strong);color:var(--cream);padding:11px 18px;border-radius:13px;font-size:13px;font-weight:600;box-shadow:var(--shadow);animation:fade .2s}
+</style>
+</head>
+<body>
+<div id="app"><div class="empty"><div class="big">♠</div>Cargando…</div></div>
+<nav>
+  <div class="nav-inner" id="nav"></div>
+</nav>
+
+<script>
+/* ============ ESTADO ============ */
+const STORE_KEY = 'elpozo:state:v1';
+const COLORS = ['#e63946','#2a9d8f','#e9c46a','#457b9d','#f4a261','#8b5cf6','#06d6a0','#ef476f','#118ab2','#fb8500'];
+let state = { players:[], sessions:[], settings:{ defaultBuyIn:1000 } };
+let tab = 'mesa';
+let closing = false; // estamos en pantalla de conteo final
+
+const uid = () => Math.random().toString(36).slice(2,9);
+const fmt = n => new Intl.NumberFormat('es-UY',{maximumFractionDigits:0}).format(Math.round(n||0));
+const money = n => '$'+fmt(n);
+const signed = n => (n>0?'+':n<0?'−':'')+'$'+fmt(Math.abs(n));
+const esc = s => (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const playerById = id => state.players.find(p=>p.id===id);
+const openSession = () => state.sessions.find(s=>s.status==='open');
+
+async function save(){
+  try{ await window.storage.set(STORE_KEY, JSON.stringify(state), true); }
+  catch(e){ console.error('save', e); }
+}
+async function load(){
+  try{
+    const r = await window.storage.get(STORE_KEY, true);
+    if(r && r.value){ const d=JSON.parse(r.value); state={...state,...d, settings:{...state.settings,...(d.settings||{})}}; }
+  }catch(e){ /* no existe aún */ }
+}
+
+/* ============ LÓGICA POKER ============ */
+function totalIn(row){ return (row.buyIns||[]).reduce((a,b)=>a+b,0); }
+function net(row){ return (row.finalChips==null?totalIn(row):row.finalChips) - totalIn(row); }
+
+function computeSettlement(rows){
+  // rows: [{playerId, net}]
+  let cred = rows.filter(r=>r.net>0).map(r=>({id:r.playerId,amt:Math.round(r.net)})).sort((a,b)=>b.amt-a.amt);
+  let debt = rows.filter(r=>r.net<0).map(r=>({id:r.playerId,amt:-Math.round(r.net)})).sort((a,b)=>b.amt-a.amt);
+  const out=[]; let i=0,j=0;
+  while(i<debt.length && j<cred.length){
+    const pay=Math.min(debt[i].amt,cred[j].amt);
+    if(pay>0) out.push({from:debt[i].id,to:cred[j].id,amount:pay});
+    debt[i].amt-=pay; cred[j].amt-=pay;
+    if(debt[i].amt<=0)i++; if(cred[j].amt<=0)j++;
+  }
+  return out;
+}
+function sessionStats(s){
+  const rows = s.rows.map(r=>({playerId:r.playerId, in:totalIn(r), chips:r.finalChips, net:net(r)}));
+  const totIn = rows.reduce((a,r)=>a+r.in,0);
+  const totChips = s.rows.every(r=>r.finalChips!=null) ? rows.reduce((a,r)=>a+(r.chips||0),0) : null;
+  const diff = totChips==null?null:totChips-totIn;
+  return {rows, totIn, totChips, diff};
+}
+function overall(){
+  const map={};
+  state.players.forEach(p=>map[p.id]={id:p.id,total:0,games:0,best:0,worst:0});
+  state.sessions.filter(s=>s.status==='closed').forEach(s=>{
+    s.rows.forEach(r=>{
+      const m=map[r.playerId]; if(!m)return;
+      const n=net(r); m.total+=n; m.games++; m.best=Math.max(m.best,n); m.worst=Math.min(m.worst,n);
+    });
+  });
+  return Object.values(map).filter(m=>m.games>0).sort((a,b)=>b.total-a.total);
+}
+
+/* ============ ACCIONES ============ */
+async function newSession(ids){
+  const bi=state.settings.defaultBuyIn;
+  state.sessions.unshift({ id:uid(), date:new Date().toISOString(), status:'open', defaultBuyIn:bi,
+    rows: ids.map(pid=>({playerId:pid, buyIns:[bi], finalChips:null})), transfers:[] });
+  closing=false; await save(); render();
+}
+async function addBuyIn(pid,amt){ const s=openSession(); const r=s.rows.find(x=>x.playerId===pid); r.buyIns.push(amt); await save(); render(); }
+async function undoBuyIn(pid){ const s=openSession(); const r=s.rows.find(x=>x.playerId===pid); if(r.buyIns.length>1)r.buyIns.pop(); await save(); render(); }
+async function removeFromSession(pid){ const s=openSession(); s.rows=s.rows.filter(r=>r.playerId!==pid); await save(); render(); }
+async function addToSession(pid){ const s=openSession(); if(!s.rows.find(r=>r.playerId===pid)) s.rows.push({playerId:pid,buyIns:[s.defaultBuyIn],finalChips:null}); await save(); render(); }
+async function cancelSession(){ const s=openSession(); state.sessions=state.sessions.filter(x=>x.id!==s.id); closing=false; await save(); render(); }
+async function closeSession(){
+  const s=openSession(); const st=sessionStats(s);
+  if(st.diff!==0) return;
+  s.transfers=computeSettlement(st.rows);
+  s.status='closed'; closing=false; await save(); tab='historial'; render();
+}
+async function savePlayer(data){
+  if(data.id){ const p=playerById(data.id); Object.assign(p,data); }
+  else { state.players.push({ id:uid(), name:data.name, bank:data.bank||'', account:data.account||'', color:COLORS[state.players.length%COLORS.length] }); }
+  await save(); render();
+}
+async function deletePlayer(id){
+  if(state.sessions.some(s=>s.rows.some(r=>r.playerId===id))){ toast('No se puede borrar: tiene partidas registradas'); return; }
+  state.players=state.players.filter(p=>p.id!==id); await save(); render();
+}
+
+/* ============ MODALES ============ */
+function closeSheet(){ const e=document.querySelector('.scrim'); if(e)e.remove(); }
+function sheet(html){
+  closeSheet();
+  const s=document.createElement('div'); s.className='scrim';
+  s.innerHTML=`<div class="sheet">${html}</div>`;
+  s.addEventListener('click',e=>{ if(e.target===s)closeSheet(); });
+  document.body.appendChild(s);
+  return s;
+}
+function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),1800); }
+
+function playerSheet(id){
+  const p=id?playerById(id):{name:'',bank:'',account:''};
+  const s=sheet(`
+    <h3>${id?'Editar jugador':'Nuevo jugador'}</h3>
+    <div class="field"><label>Nombre</label><input id="f-name" type="text" value="${esc(p.name)}" placeholder="Ej: Nacho"></div>
+    <div class="field"><label>Banco / Alias</label><input id="f-bank" type="text" value="${esc(p.bank)}" placeholder="Ej: Itaú · Mi Dinero"></div>
+    <div class="field"><label>Cuenta / CBU / Alias para transferir</label><input id="f-acct" type="text" value="${esc(p.account)}" placeholder="Número de cuenta o alias"></div>
+    <button class="btn btn-gold btn-block" id="f-save">Guardar</button>
+    ${id?'<button class="btn btn-block" style="margin-top:10px;color:var(--loss)" id="f-del">Eliminar jugador</button>':''}
+  `);
+  s.querySelector('#f-save').onclick=async()=>{
+    const name=s.querySelector('#f-name').value.trim(); if(!name){toast('Poné un nombre');return;}
+    await savePlayer({id, name, bank:s.querySelector('#f-bank').value.trim(), account:s.querySelector('#f-acct').value.trim()});
+    closeSheet();
+  };
+  if(id) s.querySelector('#f-del').onclick=async()=>{ await deletePlayer(id); closeSheet(); };
+}
+
+function buyInSheet(pid){
+  const def=openSession().defaultBuyIn;
+  const presets=[500,1000,2000,5000];
+  let sel=def;
+  const s=sheet(`
+    <h3>Recompra</h3>
+    <div class="quick-chips" id="qc">${presets.map(v=>`<div class="qchip ${v===def?'on':''}" data-v="${v}">$${fmt(v)}</div>`).join('')}</div>
+    <div class="field" style="margin-top:14px"><label>Otro monto</label><input id="f-amt" type="number" inputmode="numeric" placeholder="Monto personalizado"></div>
+    <button class="btn btn-gold btn-block" id="f-add">Agregar recompra</button>
+  `);
+  const qc=s.querySelector('#qc'); const inp=s.querySelector('#f-amt');
+  qc.querySelectorAll('.qchip').forEach(c=>c.onclick=()=>{ qc.querySelectorAll('.qchip').forEach(x=>x.classList.remove('on')); c.classList.add('on'); sel=+c.dataset.v; inp.value=''; });
+  inp.oninput=()=>{ qc.querySelectorAll('.qchip').forEach(x=>x.classList.remove('on')); sel=+inp.value||0; };
+  s.querySelector('#f-add').onclick=async()=>{ if(sel>0){ await addBuyIn(pid,sel); closeSheet(); } else toast('Monto inválido'); };
+}
+
+function settingsSheet(){
+  const s=sheet(`
+    <h3>Ajustes</h3>
+    <div class="field"><label>Buy-in inicial por defecto</label><input id="f-bi" type="number" inputmode="numeric" value="${state.settings.defaultBuyIn}"></div>
+    <button class="btn btn-gold btn-block" id="f-s">Guardar</button>
+  `);
+  s.querySelector('#f-s').onclick=async()=>{ const v=+s.querySelector('#f-bi').value; if(v>0){state.settings.defaultBuyIn=v; await save(); render();} closeSheet(); };
+}
+
+function copyAcct(text,btn){
+  const done=()=>{ btn.classList.add('ok'); btn.innerHTML='✓ copiado'; setTimeout(()=>{btn.classList.remove('ok'); btn.innerHTML='⧉ copiar';},1500); };
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(done).catch(()=>fb()); } else fb();
+  function fb(){ const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed';ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');done();}catch(e){toast('No se pudo copiar');} ta.remove(); }
+}
+
+/* ============ VISTAS ============ */
+function viewMesa(){
+  const s=openSession();
+  if(!s){
+    if(state.players.length<2) return `<div class="card"><div class="empty"><div class="big">♣</div>Agregá al menos 2 jugadores en la pestaña <b>Jugadores</b> para arrancar una partida.</div></div>`;
+    const ids=window.__pick||[];
+    return `<div class="card">
+      <div class="row between"><div class="section-title" style="margin:0">Nueva partida</div><button class="btn-soft btn btn-sm" onclick="settingsSheet()">⚙ Buy-in $${fmt(state.settings.defaultBuyIn)}</button></div>
+      <p class="small dim" style="margin:4px 2px 14px">Elegí quién juega. Cada uno arranca con $${fmt(state.settings.defaultBuyIn)}.</p>
+      ${state.players.map(p=>`<div class="pick ${ids.includes(p.id)?'on':''}" onclick="togglePick('${p.id}')">
+        <span class="chip-dot" style="background:${p.color}"></span><span class="pname">${esc(p.name)}</span>
+        <span class="box">${ids.includes(p.id)?'✓':''}</span></div>`).join('')}
+      <button class="btn btn-gold btn-block" style="margin-top:8px" onclick="startGame()">Arrancar partida (${ids.length})</button>
+    </div>`;
+  }
+  if(closing) return viewClosing(s);
+
+  const st=sessionStats(s);
+  const inGame=s.rows.map(r=>r.playerId);
+  const others=state.players.filter(p=>!inGame.includes(p.id));
+  return `
+  <div class="card row between">
+    <div><div class="tiny gold" style="letter-spacing:2px;font-weight:700">PARTIDA EN CURSO</div>
+    <div class="small dim">${new Date(s.date).toLocaleDateString('es-UY',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div></div>
+    <div style="text-align:right"><div class="tiny muted">En la mesa</div><div class="mono" style="font-size:20px;font-weight:700">${money(st.totIn)}</div></div>
+  </div>
+  ${s.rows.map(r=>{ const p=playerById(r.playerId); const ti=totalIn(r); const rc=r.buyIns.length-1;
+    return `<div class="card pcard">
+      <div class="top">
+        <span class="chip-dot" style="background:${p.color}"></span>
+        <span class="pname">${esc(p.name)}</span>
+        <div class="pinfo"><div class="big">${money(ti)}</div><div class="tiny muted">${rc>0?rc+' recompra'+(rc>1?'s':''):'sin recompras'}</div></div>
+      </div>
+      <div class="buyin-controls">
+        <button class="btn btn-soft btn-sm" onclick="addBuyIn('${p.id}',${s.defaultBuyIn})">+ $${fmt(s.defaultBuyIn)}</button>
+        <button class="btn btn-ghost btn-sm" onclick="buyInSheet('${p.id}')">Otro monto</button>
+        ${r.buyIns.length>1?`<button class="btn btn-ghost btn-sm" onclick="undoBuyIn('${p.id}')">↶ deshacer</button>`:''}
+        <button class="btn btn-ghost btn-sm" style="margin-left:auto;color:var(--muted)" onclick="removeFromSession('${p.id}')">✕</button>
+      </div>
+    </div>`;}).join('')}
+  ${others.length?`<div class="card"><div class="small dim" style="margin-bottom:8px">Sumar a la mesa</div><div class="row" style="flex-wrap:wrap;gap:8px">
+    ${others.map(p=>`<button class="btn btn-ghost btn-sm" onclick="addToSession('${p.id}')"><span class="chip-dot sm" style="background:${p.color}"></span> ${esc(p.name)}</button>`).join('')}
+  </div></div>`:''}
+  <button class="btn btn-gold btn-block" style="margin-top:14px" onclick="goClosing()">Cerrar partida y contar fichas</button>
+  <button class="btn btn-block" style="margin-top:10px;color:var(--muted)" onclick="confirmCancel()">Cancelar partida</button>
+  `;
+}
+
+function viewClosing(s){
+  return `
+  <div class="card"><div class="section-title" style="margin:0 0 4px">Conteo final</div>
+  <p class="small dim" style="margin:0 2px">Cargá con cuánto quedó cada uno (valor de las fichas en pesos).</p></div>
+  ${s.rows.map(r=>{ const p=playerById(r.playerId); const ti=totalIn(r);
+    return `<div class="card">
+      <div class="row between" style="margin-bottom:10px">
+        <div class="row"><span class="chip-dot" style="background:${p.color}"></span><span class="pname">${esc(p.name)}</span></div>
+        <span class="tiny muted">invirtió ${money(ti)}</span>
+      </div>
+      <input type="number" inputmode="numeric" placeholder="Fichas finales $" data-pid="${r.playerId}" value="${r.finalChips==null?'':r.finalChips}" oninput="onChipInput(this)">
+      <div class="row between small" style="margin-top:8px"><span class="muted">Resultado</span><span class="mono" id="net-${r.playerId}">—</span></div>
+    </div>`;}).join('')}
+  <div class="card" id="balance-box"></div>
+  <button class="btn btn-gold btn-block" id="close-btn" style="margin-top:14px" onclick="closeSession()">Calcular y saldar</button>
+  <button class="btn btn-block" style="margin-top:10px;color:var(--muted)" onclick="closing=false;render()">← Volver a la mesa</button>
+  `;
+}
+function onChipInput(el){
+  const s=openSession(); const r=s.rows.find(x=>x.playerId===el.dataset.pid);
+  r.finalChips = el.value===''?null:(+el.value);
+  // actualizar neto del jugador
+  const nEl=document.getElementById('net-'+r.playerId);
+  if(nEl){ if(r.finalChips==null){nEl.textContent='—';nEl.className='mono';} else { const n=net(r); nEl.textContent=signed(n); nEl.className='mono '+(n>0?'win':n<0?'loss':''); } }
+  updateBalance();
+  save();
+}
+function updateBalance(){
+  const s=openSession(); const st=sessionStats(s); const box=document.getElementById('balance-box'); const btn=document.getElementById('close-btn');
+  if(!box)return;
+  const allIn = s.rows.every(r=>r.finalChips!=null);
+  if(!allIn){ box.innerHTML=`<div class="row between"><span class="small dim">Falta cargar fichas de ${s.rows.filter(r=>r.finalChips==null).length} jugador(es)</span></div>`; btn.style.opacity=.45; btn.style.pointerEvents='none'; return; }
+  if(st.diff===0){ box.innerHTML=`<div class="row between"><span class="small dim">Total fichas vs. mesa</span><span class="pill ok">✓ Cuadra · ${money(st.totChips)}</span></div>`; btn.style.opacity=1; btn.style.pointerEvents='auto'; }
+  else { box.innerHTML=`<div class="row between"><span class="small dim">Descuadre de conteo</span><span class="pill warn">${st.diff>0?'sobran':'faltan'} ${money(Math.abs(st.diff))}</span></div><div class="tiny muted" style="margin-top:8px">Las fichas finales (${money(st.totChips)}) tienen que sumar lo que se puso en la mesa (${money(st.totIn)}). Revisá el conteo para poder saldar.</div>`; btn.style.opacity=.45; btn.style.pointerEvents='none'; }
+}
+
+function viewRanking(){
+  const o=overall();
+  if(!o.length) return `<div class="card"><div class="empty"><div class="big">♦</div>Todavía no hay partidas cerradas. El ranking aparece cuando cierres la primera.</div></div>`;
+  const max=Math.max(...o.map(m=>Math.abs(m.total)),1);
+  return `<div class="card">
+    ${o.map((m,i)=>{ const p=playerById(m.id); const pos=Math.max(m.total,0)/max*100; const neg=Math.max(-m.total,0)/max*100;
+      return `<div class="rank-row">
+        <span class="rank-pos">${i+1}</span>
+        <span class="chip-dot" style="background:${p.color}"></span>
+        <div style="flex:1;min-width:0">
+          <div class="pname">${esc(p.name)}</div>
+          <div class="tiny muted">${m.games} partida${m.games>1?'s':''} · mejor ${signed(m.best)}</div>
+          <div class="bar"><i style="width:${(m.total>=0?pos:neg)}%;background:${m.total>=0?'var(--win)':'var(--loss)'}"></i></div>
+        </div>
+        <div class="rank-net"><div class="v ${m.total>0?'win':m.total<0?'loss':''}">${signed(m.total)}</div></div>
+      </div>`;}).join('')}
+  </div>`;
+}
+
+function viewJugadores(){
+  return `<button class="btn btn-gold btn-block" onclick="playerSheet()" style="margin-bottom:14px">+ Agregar jugador</button>
+  ${state.players.length?state.players.map(p=>`<div class="card row" style="gap:12px">
+    <span class="chip-dot" style="background:${p.color}"></span>
+    <div style="flex:1;min-width:0">
+      <div class="pname">${esc(p.name)}</div>
+      <div class="tiny muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.account?esc((p.bank?p.bank+' · ':'')+p.account):'sin cuenta cargada'}</div>
+    </div>
+    ${p.account?`<button class="copybtn" onclick="copyAcct('${esc(p.account)}',this)">⧉ copiar</button>`:''}
+    <button class="btn-ghost btn btn-sm" onclick="playerSheet('${p.id}')">editar</button>
+  </div>`).join(''):`<div class="card"><div class="empty">Sin jugadores todavía.</div></div>`}`;
+}
+
+function viewHistorial(){
+  const closed=state.sessions.filter(s=>s.status==='closed');
+  if(!closed.length) return `<div class="card"><div class="empty"><div class="big">♥</div>No hay partidas cerradas aún.</div></div>`;
+  return closed.map(s=>{
+    const st=sessionStats(s);
+    const sorted=[...st.rows].sort((a,b)=>b.net-a.net);
+    const open = (window.__openHist===s.id);
+    return `<div class="card">
+      <div class="row between" onclick="toggleHist('${s.id}')" style="cursor:pointer">
+        <div><div class="pname" style="font-size:15px">${new Date(s.date).toLocaleDateString('es-UY',{weekday:'short',day:'2-digit',month:'short'})}</div>
+        <div class="tiny muted">${s.rows.length} jugadores · pozo ${money(st.totIn)}</div></div>
+        <span class="link">${open?'ocultar ▲':'ver ▼'}</span>
+      </div>
+      ${open?`<div class="divider"></div>
+        ${sorted.map(r=>{const p=playerById(r.playerId);return `<div class="row between" style="padding:5px 0"><div class="row"><span class="chip-dot sm" style="background:${p?p.color:'#888'}"></span><span class="small">${p?esc(p.name):'—'}</span></div><span class="mono small ${r.net>0?'win':r.net<0?'loss':''}">${signed(r.net)}</span></div>`;}).join('')}
+        <div class="divider"></div>
+        <div class="tiny gold" style="font-weight:700;letter-spacing:1px;margin-bottom:6px">CÓMO SALDAR</div>
+        ${s.transfers.length?s.transfers.map(t=>{const f=playerById(t.from),to=playerById(t.to);
+          return `<div class="transfer">
+            <span class="arrow">→</span>
+            <div class="tnames"><div class="small"><span class="pay">${f?esc(f.name):'—'}</span> le paga a <span class="pay">${to?esc(to.name):'—'}</span></div>
+            ${to&&to.account?`<div class="acct"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc((to.bank?to.bank+' · ':'')+to.account)}</span><button class="copybtn" onclick="copyAcct('${esc(to.account)}',this)">⧉ copiar</button></div>`:`<div class="acct muted">cuenta no cargada</div>`}</div>
+            <span class="tamt">${money(t.amount)}</span>
+          </div>`;}).join(''):`<div class="small muted">Quedaron parejos, nadie debe nada.</div>`}
+      `:''}
+    </div>`;
+  }).join('');
+}
+
+/* ============ NAV + RENDER ============ */
+const TABS=[
+  {id:'mesa',label:'Mesa',icon:'<path d="M4 4h16v16H4z" fill="none"/><circle cx="12" cy="12" r="8"/>'},
+  {id:'ranking',label:'Ranking',icon:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'},
+  {id:'historial',label:'Historial',icon:'<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/>'},
+  {id:'jugadores',label:'Jugadores',icon:'<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.2"/><path d="M16 20c0-2 1.5-3.5 4-3.5"/>'},
+];
+function renderNav(){
+  document.getElementById('nav').innerHTML=TABS.map(t=>`
+    <button class="nav-btn ${tab===t.id?'active':''}" onclick="go('${t.id}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${t.icon}</svg>
+      ${t.label}${t.id==='mesa'&&openSession()?' •':''}
+    </button>`).join('');
+}
+function header(){
+  return `<header><div class="brand"><h1>El Pozo<span class="pip"></span></h1><div class="sub">Saldá tu mesa</div></div></header>`;
+}
+function render(){
+  let body='';
+  if(tab==='mesa') body=viewMesa();
+  else if(tab==='ranking') body=viewRanking();
+  else if(tab==='jugadores') body=viewJugadores();
+  else if(tab==='historial') body=viewHistorial();
+  const titles={ranking:'Ranking global',jugadores:'Jugadores y cuentas',historial:'Historial'};
+  const h = tab!=='mesa'?`<div class="section-title">${titles[tab]}</div>`:'';
+  document.getElementById('app').innerHTML=header()+h+body;
+  renderNav();
+  if(closing) updateBalance();
+}
+function go(t){ tab=t; closing=false; render(); }
+
+/* picks para nueva partida */
+window.__pick=[];
+function togglePick(id){ const i=window.__pick.indexOf(id); if(i>=0)window.__pick.splice(i,1); else window.__pick.push(id); render(); }
+function startGame(){ if(window.__pick.length<2){toast('Elegí al menos 2 jugadores');return;} newSession([...window.__pick]); window.__pick=[]; }
+function goClosing(){ closing=true; render(); }
+function confirmCancel(){ const s=sheet(`<h3>¿Cancelar partida?</h3><p class="small dim" style="margin:0 0 16px">Se borra la partida en curso y no queda registrada.</p><button class="btn btn-block" style="background:var(--loss);color:#3a0d0d" onclick="cancelSession();closeSheet()">Sí, cancelar</button><button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="closeSheet()">No</button>`); }
+function toggleHist(id){ window.__openHist = window.__openHist===id?null:id; render(); }
+
+// exponer handlers
+Object.assign(window,{go,togglePick,startGame,goClosing,confirmCancel,toggleHist,addBuyIn,undoBuyIn,removeFromSession,addToSession,buyInSheet,playerSheet,settingsSheet,copyAcct,onChipInput,closeSession,cancelSession,closeSheet,newSession});
+
+(async()=>{ await load(); render(); })();
+</script>
+</body>
+</html>
