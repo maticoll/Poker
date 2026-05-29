@@ -262,8 +262,9 @@ export function Sheet({
         background: "rgba(4,18,12,.72)",
         backdropFilter: "blur(3px)",
         display: "flex",
-        alignItems: "flex-end",
+        alignItems: "center",
         justifyContent: "center",
+        padding: "0 16px",
         animation: "fadeIn .2s",
       }}
     >
@@ -273,10 +274,9 @@ export function Sheet({
           maxWidth: 520,
           background: "var(--panel-solid)",
           border: "1px solid var(--line-strong)",
-          borderBottom: "none",
-          borderRadius: "22px 22px 0 0",
-          padding: "20px 18px calc(22px + env(safe-area-inset-bottom,0px))",
-          boxShadow: "0 -20px 50px -10px rgba(0,0,0,.6)",
+          borderRadius: 22,
+          padding: "20px 18px 24px",
+          boxShadow: "0 20px 60px -10px rgba(0,0,0,.7)",
           animation: "slideUp .25s cubic-bezier(.2,.8,.2,1)",
         }}
       >
