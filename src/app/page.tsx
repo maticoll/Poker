@@ -503,8 +503,8 @@ function IdentitySheet({ players, onSelect, onSkip }: {
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(4,18,12,.9)", backdropFilter: "blur(4px)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-      <div style={{ width: "100%", maxWidth: 520, background: "var(--panel-solid)", border: "1px solid var(--line-strong)", borderBottom: "none", borderRadius: "22px 22px 0 0", padding: "24px 18px calc(32px + env(safe-area-inset-bottom,0px))" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(4,18,12,.9)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px" }}>
+      <div style={{ width: "100%", maxWidth: 520, background: "var(--panel-solid)", border: "1px solid var(--line-strong)", borderRadius: 22, padding: "24px 18px 32px" }}>
         <h3 style={{ fontFamily: "var(--font-fraunces), serif", fontSize: 24, margin: "0 0 6px", color: "var(--cream)" }}>¿Quién sos?</h3>
         <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 18px" }}>Elegí tu jugador para cargar recompras.</p>
         {players.map((p) => (
